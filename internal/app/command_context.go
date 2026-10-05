@@ -3,11 +3,13 @@ package app
 import (
 	"errors"
 	"flag"
+	"fmt"
 	"io"
 	"os"
 	"sort"
 	"text/tabwriter"
 
+	"github.com/zongqichen/cloud-foundry-cli-contexts/internal/cfhome"
 	"github.com/zongqichen/cloud-foundry-cli-contexts/internal/config"
 	"github.com/zongqichen/cloud-foundry-cli-contexts/internal/contextname"
 	"github.com/zongqichen/cloud-foundry-cli-contexts/internal/lock"
@@ -16,10 +18,11 @@ import (
 )
 
 type contextListItem struct {
-	Name    string `json:"name"`
-	Context string `json:"context"`
-	Default bool   `json:"default"`
-	Created bool   `json:"created"`
+	Name    string          `json:"name"`
+	Context string          `json:"context"`
+	Default bool            `json:"default"`
+	Created bool            `json:"created"`
+	Target  *cfhome.Summary `json:"target,omitempty"`
 }
 
 func commandContext(options Options, args []string) int {
@@ -130,6 +133,7 @@ func commandContextCreate(options Options, args []string) (exitCode int) {
 func commandContextList(options Options, args []string) int {
 	flags := newContextFlagSet("list", options.Stderr)
 	jsonOutput := flags.Bool("json", false, "print JSON output")
+	targets := flags.Bool("targets", false, "include each context's CF target (api/org/space)")
 	if code, ok := parseFlagSet(flags, args); !ok {
 		return code
 	}
@@ -162,11 +166,41 @@ func commandContextList(options Options, args []string) int {
 		fprintf(options.Stderr, "cfs: list contexts: %v\n", err)
 		return exitError
 	}
+	if *targets {
+		if err := attachContextTargets(items, entries); err != nil {
+			fprintf(options.Stderr, "cfs: inspect context targets: %v\n", err)
+			return exitError
+		}
+	}
 	if *jsonOutput {
 		return writeJSON(options, map[string]any{"contexts": items})
 	}
-	printContextList(options.Stdout, items)
+	printContextList(options.Stdout, items, *targets)
 	return exitOK
+}
+
+// attachContextTargets fills in each created context's target summary by reading
+// its stored CF configuration directly. It never invokes cf and never reads
+// credentials beyond the api/org/space names.
+func attachContextTargets(items []contextListItem, entries []store.Entry) error {
+	homes := make(map[string]string, len(entries))
+	for _, entry := range entries {
+		homes[entry.Metadata.ContextName] = entry.Context.CFHome
+	}
+	for index := range items {
+		home, ok := homes[items[index].Name]
+		if !ok {
+			continue
+		}
+		summary, present, err := cfhome.Summarize(home)
+		if err != nil {
+			return err
+		}
+		if present {
+			items[index].Target = &summary
+		}
+	}
+	return nil
 }
 
 func commandContextStatus(options Options, args []string) int {
@@ -324,17 +358,35 @@ func contextItems(stateStore store.Store, ws workspace.Workspace, entries []stor
 	return items, nil
 }
 
-func printContextList(output io.Writer, items []contextListItem) {
+func printContextList(output io.Writer, items []contextListItem, showTargets bool) {
 	writer := tabwriter.NewWriter(output, 0, 4, 2, ' ', 0)
-	fprintf(writer, "NAME\tSTATE\tCONTEXT\n")
+	if showTargets {
+		fprintf(writer, "NAME\tSTATE\tCONTEXT\tTARGET\n")
+	} else {
+		fprintf(writer, "NAME\tSTATE\tCONTEXT\n")
+	}
 	for _, item := range items {
 		state := "created"
 		if !item.Created {
 			state = "implicit"
 		}
-		fprintf(writer, "%s\t%s\t%s\n", item.Name, state, item.Context)
+		if showTargets {
+			fprintf(writer, "%s\t%s\t%s\t%s\n", item.Name, state, item.Context, targetColumn(item.Target))
+		} else {
+			fprintf(writer, "%s\t%s\t%s\n", item.Name, state, item.Context)
+		}
 	}
 	_ = writer.Flush()
+}
+
+func targetColumn(summary *cfhome.Summary) string {
+	if summary == nil {
+		return "-"
+	}
+	if summary.Org == "" && summary.Space == "" {
+		return summary.API
+	}
+	return fmt.Sprintf("%s (%s/%s)", summary.API, summary.Org, summary.Space)
 }
 
 func newContextFlagSet(name string, output io.Writer) *flag.FlagSet {
@@ -347,7 +399,7 @@ func printContextHelp(output io.Writer) {
 	fprintf(output, "Manage named Cloud Foundry contexts in the current workspace.\n\n")
 	fprintf(output, "Usage:\n  cfs context <command> [options]\n\nCommands:\n")
 	fprintf(output, "  create <name>          Create an empty context\n")
-	fprintf(output, "  list                   List contexts\n")
+	fprintf(output, "  list                   List contexts (--targets adds api/org/space)\n")
 	fprintf(output, "  status <name>          Show a context and its CF target\n")
 	fprintf(output, "  remove <name>          Move a context to recoverable trash\n")
 	fprintf(output, "\nRun CF commands with a named context:\n  cfs -c <name> <cf arguments...>\n")

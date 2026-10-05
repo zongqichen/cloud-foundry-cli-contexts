@@ -54,7 +54,7 @@ func allCommands() []commandSpec {
 			name:     "context",
 			summary:  "Manage named Cloud Foundry contexts in the current workspace",
 			usage:    "cfs context <create|list|status|remove> [options]",
-			examples: "  cfs context create prod\n  cfs context create prod --json\n  cfs context list\n  cfs context status prod --json --redact",
+			examples: "  cfs context create prod\n  cfs context create prod --json\n  cfs context list --targets --json\n  cfs context status prod --json --redact",
 			run:      commandContext,
 		},
 		{
