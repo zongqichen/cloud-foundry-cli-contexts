@@ -53,16 +53,25 @@ func commandContext(options Options, args []string) int {
 
 func commandContextCreate(options Options, args []string) (exitCode int) {
 	if isHelpRequest(args) {
-		printContextSubcommandHelp(options.Stdout, "Create an empty named context.", "cfs context create <name>")
+		printContextSubcommandHelp(options.Stdout, "Create an empty named context.", "cfs context create <name> [--json]")
 		return exitOK
 	}
-	if len(args) != 1 {
+	if len(args) == 0 {
 		fprintf(options.Stderr, "cfs: context create requires exactly one name\n")
 		return exitUsage
 	}
 	name := args[0]
 	if err := contextname.Validate(name); err != nil {
 		fprintf(options.Stderr, "cfs: %v\n", err)
+		return exitUsage
+	}
+	flags := newContextFlagSet("create", options.Stderr)
+	jsonOutput := flags.Bool("json", false, "print JSON output")
+	if code, ok := parseFlagSet(flags, args[1:]); !ok {
+		return code
+	}
+	if flags.NArg() != 0 {
+		fprintf(options.Stderr, "cfs: context create does not accept extra arguments\n")
 		return exitUsage
 	}
 	managed, code, ok := managedContextForCommand(options, name)
@@ -105,6 +114,14 @@ func commandContextCreate(options Options, args []string) (exitCode int) {
 	if err := managed.Store.Ensure(managed.Context, managed.Workspace); err != nil {
 		fprintf(options.Stderr, "cfs: create context %q: %v\n", name, err)
 		return exitError
+	}
+	if *jsonOutput {
+		return writeJSON(options, createResult{
+			Action:    "created",
+			Context:   name,
+			Workspace: managed.Workspace.Root,
+			CFHome:    managed.Context.CFHome,
+		})
 	}
 	fprintf(options.Stdout, "Created context %q.\n", name)
 	return exitOK
@@ -185,7 +202,7 @@ func commandContextRemove(options Options, args []string) int {
 		return exitUsage
 	}
 	if isHelpRequest(args) {
-		printContextSubcommandHelp(options.Stdout, "Move a named context to recoverable trash.", "cfs context remove <name> [--yes]")
+		printContextSubcommandHelp(options.Stdout, "Move a named context to recoverable trash.", "cfs context remove <name> [--yes] [--json]")
 		return exitOK
 	}
 	name := args[0]
@@ -195,6 +212,7 @@ func commandContextRemove(options Options, args []string) int {
 	}
 	flags := newContextFlagSet("remove", options.Stderr)
 	yes := flags.Bool("yes", false, "confirm removal without prompting")
+	jsonOutput := flags.Bool("json", false, "print JSON output")
 	if code, ok := parseFlagSet(flags, args[1:]); !ok {
 		return code
 	}
@@ -251,6 +269,14 @@ func commandContextRemove(options Options, args []string) int {
 	if releaseErr != nil {
 		fprintf(options.Stderr, "cfs: %v\n", releaseErr)
 		return exitError
+	}
+	if *jsonOutput {
+		return writeJSON(options, removeResult{
+			Action:    "removed",
+			Context:   name,
+			TrashPath: destination,
+			Warning:   trashCredentialWarning,
+		})
 	}
 	fprintf(options.Stdout, "Moved context %q to %s\n", name, destination)
 	fprintf(options.Stdout, "%s\n", trashCredentialWarning)
