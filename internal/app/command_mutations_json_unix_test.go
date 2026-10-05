@@ -22,7 +22,7 @@ func TestContextCreateJSON(t *testing.T) {
 	if err := json.Unmarshal([]byte(result.stdout), &out); err != nil {
 		t.Fatalf("decode: %v\nraw: %q", err, result.stdout)
 	}
-	if out.Action != "created" || out.Context != "prod" || out.Workspace != root || out.CFHome == "" {
+	if out.Action != "created" || out.Context != "prod" || out.Workspace != canonicalTestPath(t, root) || out.CFHome == "" {
 		t.Fatalf("result = %+v", out)
 	}
 }
@@ -61,7 +61,7 @@ func TestResetJSONNoState(t *testing.T) {
 	if err := json.Unmarshal([]byte(result.stdout), &out); err != nil {
 		t.Fatalf("decode: %v\nraw: %q", err, result.stdout)
 	}
-	if out.Action != "none" || out.Workspace != root || out.TrashPath != "" {
+	if out.Action != "none" || out.Workspace != canonicalTestPath(t, root) || out.TrashPath != "" {
 		t.Fatalf("result = %+v", out)
 	}
 }
@@ -108,7 +108,7 @@ func TestImportJSON(t *testing.T) {
 	if err := json.Unmarshal([]byte(result.stdout), &out); err != nil {
 		t.Fatalf("decode: %v\nraw: %q", err, result.stdout)
 	}
-	if out.Action != "imported" || out.Workspace != root || out.CFHome == "" || out.Context == "" {
+	if out.Action != "imported" || out.Workspace != canonicalTestPath(t, root) || out.CFHome == "" || out.Context == "" {
 		t.Fatalf("result = %+v", out)
 	}
 }
