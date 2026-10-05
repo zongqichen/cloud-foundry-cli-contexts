@@ -1,10 +1,17 @@
 package app
 
 import (
+	"fmt"
+	"os"
+	"time"
+
 	"github.com/zongqichen/cloud-foundry-cli-contexts/internal/config"
+	"github.com/zongqichen/cloud-foundry-cli-contexts/internal/envvar"
 	"github.com/zongqichen/cloud-foundry-cli-contexts/internal/lock"
 	"github.com/zongqichen/cloud-foundry-cli-contexts/internal/store"
 )
+
+const defaultEphemeralTTL = 24 * time.Hour
 
 type gcAction string
 
@@ -20,6 +27,7 @@ type gcEntry struct {
 	Name      string   `json:"name"`
 	Workspace string   `json:"workspace"`
 	Action    gcAction `json:"action"`
+	Reason    string   `json:"reason,omitempty"`
 	Path      string   `json:"path,omitempty"`
 }
 
@@ -51,7 +59,13 @@ func commandGC(options Options, args []string) int {
 		return exitError
 	}
 
-	results, failed := collectGarbage(entries, stateStore, *apply)
+	ttl, err := ephemeralTTL()
+	if err != nil {
+		fprintf(options.Stderr, "cfs: %v\n", err)
+		return exitUsage
+	}
+
+	results, failed := collectGarbage(entries, stateStore, *apply, time.Now().UTC(), ttl)
 	if *jsonOutput {
 		output := map[string]any{"contexts": results, "applied": *apply}
 		if containsGCAction(results, gcTrashed) {
@@ -69,11 +83,12 @@ func commandGC(options Options, args []string) int {
 	return exitOK
 }
 
-func collectGarbage(entries []store.Entry, stateStore store.Store, apply bool) ([]gcEntry, bool) {
+func collectGarbage(entries []store.Entry, stateStore store.Store, apply bool, now time.Time, ttl time.Duration) ([]gcEntry, bool) {
 	results := []gcEntry{}
 	failed := false
 	for _, entry := range entries {
-		if !entry.Orphaned {
+		reason := reapReason(entry, now, ttl)
+		if reason == "" {
 			continue
 		}
 		result := gcEntry{
@@ -81,6 +96,7 @@ func collectGarbage(entries []store.Entry, stateStore store.Store, apply bool) (
 			Name:      entry.Metadata.ContextName,
 			Workspace: entry.Metadata.Workspace,
 			Action:    gcWouldTrash,
+			Reason:    reason,
 		}
 		if apply {
 			workspaceLock, lockErr := lock.Acquire(entry.Context.LockPath, 0)
@@ -102,6 +118,31 @@ func collectGarbage(entries []store.Entry, stateStore store.Store, apply bool) (
 		results = append(results, result)
 	}
 	return results, failed
+}
+
+// reapReason reports why an entry is eligible for gc, or "" if it is not. A
+// context is reaped when its workspace no longer exists, or when it is
+// ephemeral and has been idle longer than the TTL.
+func reapReason(entry store.Entry, now time.Time, ttl time.Duration) string {
+	if entry.Orphaned {
+		return "orphaned"
+	}
+	if entry.Metadata.Ephemeral && now.Sub(entry.Metadata.LastUsedAt) >= ttl {
+		return "ephemeral-expired"
+	}
+	return ""
+}
+
+func ephemeralTTL() (time.Duration, error) {
+	value := os.Getenv(envvar.EphemeralTTL)
+	if value == "" {
+		return defaultEphemeralTTL, nil
+	}
+	ttl, err := time.ParseDuration(value)
+	if err != nil || ttl < 0 {
+		return 0, fmt.Errorf("invalid %s %q", envvar.EphemeralTTL, value)
+	}
+	return ttl, nil
 }
 
 func printGCResults(options Options, results []gcEntry, applied bool) {

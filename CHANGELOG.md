@@ -9,6 +9,10 @@ contract may still change while cfs is pre-1.0.
 
 ### Added
 
+- Added ephemeral contexts: `cfs context create --ephemeral` mints a uniquely
+  named context for throwaway or parallel work, and `cfs gc` reaps ephemeral
+  contexts once they have been idle past the TTL (`CFS_EPHEMERAL_TTL`, default
+  24h). `cfs gc` now reports a `reason` for each reaped context.
 - Added `--targets` to `cfs context list` to show each context's api/org/space
   in one call. It reads stored CF configuration directly without invoking `cf`
   and never exposes tokens.

@@ -122,6 +122,7 @@ func environmentContract() []envDescription {
 		{envvar.WorkspaceRoot, "Pin the workspace instead of discovering it from the directory"},
 		{envvar.StateHome, "Override the directory that stores managed CF state"},
 		{envvar.LockTimeout, "Maximum wait for a context lock (Go duration)"},
+		{envvar.EphemeralTTL, "Idle time before gc reaps an ephemeral context (default 24h)"},
 		{envvar.Disable, "Set to 1 to bypass workspace isolation for one invocation"},
 		{envvar.NoUpdateCheck, "Set to 1 to disable interactive update notices"},
 		{envvar.ConfigFile, "Override the path to the cfs configuration file"},
