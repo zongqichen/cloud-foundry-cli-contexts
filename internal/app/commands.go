@@ -54,7 +54,7 @@ func allCommands() []commandSpec {
 			name:     "context",
 			summary:  "Manage named Cloud Foundry contexts in the current workspace",
 			usage:    "cfs context <create|list|status|remove> [options]",
-			examples: "  cfs context create prod\n  cfs context list\n  cfs context status prod --json --redact",
+			examples: "  cfs context create prod\n  cfs context create prod --json\n  cfs context list\n  cfs context status prod --json --redact",
 			run:      commandContext,
 		},
 		{
@@ -67,8 +67,8 @@ func allCommands() []commandSpec {
 		{
 			name:     "import",
 			summary:  "Import global CF state into a workspace context",
-			usage:    "cfs import [--context <name>] [--yes] [--force]",
-			examples: "  cfs import\n  cfs import --yes\n  cfs import --context prod --yes",
+			usage:    "cfs import [--context <name>] [--yes] [--force] [--json]",
+			examples: "  cfs import\n  cfs import --yes --json\n  cfs import --context prod --yes",
 			run:      commandImport,
 		},
 		{
@@ -81,8 +81,8 @@ func allCommands() []commandSpec {
 		{
 			name:     "reset",
 			summary:  "Move the current workspace state to recoverable trash",
-			usage:    "cfs reset [--yes]",
-			examples: "  cfs reset\n  cfs reset --yes",
+			usage:    "cfs reset [--yes] [--json]",
+			examples: "  cfs reset\n  cfs reset --yes --json",
 			run:      commandReset,
 		},
 		{

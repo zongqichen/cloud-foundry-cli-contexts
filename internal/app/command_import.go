@@ -16,6 +16,7 @@ func commandImport(options Options, args []string) (exitCode int) {
 	yes := flags.Bool("yes", false, "confirm import without prompting")
 	force := flags.Bool("force", false, "replace an existing workspace target")
 	name := flags.String("context", contextname.Default, "destination context name")
+	jsonOutput := flags.Bool("json", false, "print JSON output")
 	if code, ok := parseFlagSet(flags, args); !ok {
 		return code
 	}
@@ -122,6 +123,14 @@ func commandImport(options Options, args []string) (exitCode int) {
 		return exitError
 	}
 
+	if *jsonOutput {
+		return writeJSON(options, importResult{
+			Action:    "imported",
+			Context:   *name,
+			Workspace: managed.Workspace.Root,
+			CFHome:    managed.Context.CFHome,
+		})
+	}
 	if *name == contextname.Default {
 		fprintf(options.Stdout, "Imported global CF context into %s.\n", managed.Workspace.Root)
 	} else {

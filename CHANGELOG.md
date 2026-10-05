@@ -9,6 +9,9 @@ contract may still change while cfs is pre-1.0.
 
 ### Added
 
+- Added `--json` to the state-changing commands `cfs context create`,
+  `cfs context remove`, `cfs import`, and `cfs reset`, so agents can parse a
+  structured result (action, context, workspace, trash path) instead of prose.
 - Added `cfs describe` (with `--json`) as a read-only, one-call contract for
   agents: version, exit codes, environment variables, workspace resolution, and
   the contexts in the current workspace. It never invokes `cf`.

@@ -126,7 +126,9 @@ cfs context status prod --json --redact
 
 `cfs describe --json` is the one-call self-discovery surface: version, exit-code
 contract, environment variables, workspace resolution, and the contexts in the
-current workspace. It never invokes `cf`.
+current workspace. It never invokes `cf`. The state-changing commands
+(`cfs context create` / `remove`, `cfs import`, `cfs reset`) also accept `--json`
+and print a structured result for the agent to parse.
 
 The optional [cfs Agent Skill](.agents/skills/cfs/SKILL.md) teaches agents to
 discover existing contexts, fail closed on ambiguity, and preserve user

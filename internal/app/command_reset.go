@@ -12,6 +12,7 @@ import (
 func commandReset(options Options, args []string) int {
 	flags := newFlagSet("reset", options.Stderr)
 	yes := flags.Bool("yes", false, "confirm reset without prompting")
+	jsonOutput := flags.Bool("json", false, "print JSON output")
 	if code, ok := parseFlagSet(flags, args); !ok {
 		return code
 	}
@@ -34,6 +35,9 @@ func commandReset(options Options, args []string) int {
 		return exitUnavailable
 	}
 	if _, err := os.Stat(managed.Context.Dir); errors.Is(err, os.ErrNotExist) {
+		if *jsonOutput {
+			return writeJSON(options, resetResult{Action: "none", Workspace: managed.Workspace.Root})
+		}
 		fprintf(options.Stdout, "No managed CF state exists for %s.\n", managed.Workspace.Root)
 		return exitOK
 	} else if err != nil {
@@ -66,6 +70,14 @@ func commandReset(options Options, args []string) int {
 	if releaseErr != nil {
 		fprintf(options.Stderr, "cfs: %v\n", releaseErr)
 		return exitError
+	}
+	if *jsonOutput {
+		return writeJSON(options, resetResult{
+			Action:    "reset",
+			Workspace: managed.Workspace.Root,
+			TrashPath: destination,
+			Warning:   trashCredentialWarning,
+		})
 	}
 	fprintf(options.Stdout, "Moved workspace state to %s\n", destination)
 	fprintf(options.Stdout, "%s\n", trashCredentialWarning)
