@@ -129,7 +129,10 @@ contract, environment variables, workspace resolution, and the contexts in the
 current workspace. It never invokes `cf`. The state-changing commands
 (`cfs context create` / `remove`, `cfs import`, `cfs reset`) also accept `--json`
 and print a structured result for the agent to parse. `cfs context list
---targets --json` lists every context with its api/org/space in one call.
+--targets --json` lists every context with its api/org/space in one call. For
+throwaway or parallel work, `cfs context create --ephemeral` mints a uniquely
+named context that `cfs gc` reaps once it has been idle past `CFS_EPHEMERAL_TTL`
+(default 24h).
 
 The optional [cfs Agent Skill](.agents/skills/cfs/SKILL.md) teaches agents to
 discover existing contexts, fail closed on ambiguity, and preserve user

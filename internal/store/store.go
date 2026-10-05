@@ -56,6 +56,7 @@ type Metadata struct {
 	Fingerprint string    `json:"fingerprint"`
 	CreatedAt   time.Time `json:"created_at"`
 	LastUsedAt  time.Time `json:"last_used_at"`
+	Ephemeral   bool      `json:"ephemeral,omitempty"`
 }
 
 type Entry struct {
@@ -124,6 +125,17 @@ func (s Store) PrepareRoot() error {
 }
 
 func (s Store) Ensure(ctx Context, ws workspace.Workspace) error {
+	return s.ensure(ctx, ws, false)
+}
+
+// EnsureEphemeral is like Ensure but marks a newly created context ephemeral so
+// that gc can reap it once it has been idle past the ephemeral TTL. An existing
+// context's ephemeral flag is left unchanged.
+func (s Store) EnsureEphemeral(ctx Context, ws workspace.Workspace) error {
+	return s.ensure(ctx, ws, true)
+}
+
+func (s Store) ensure(ctx Context, ws workspace.Workspace, ephemeral bool) error {
 	if err := contextname.Validate(ctx.Name); err != nil {
 		return err
 	}
@@ -151,6 +163,7 @@ func (s Store) Ensure(ctx Context, ws workspace.Workspace) error {
 			Fingerprint: ws.Fingerprint,
 			CreatedAt:   now,
 			LastUsedAt:  now,
+			Ephemeral:   ephemeral,
 		}
 	} else if err != nil {
 		return err

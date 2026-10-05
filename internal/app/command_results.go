@@ -9,6 +9,7 @@ type createResult struct {
 	Context   string `json:"context"`
 	Workspace string `json:"workspace"`
 	CFHome    string `json:"cf_home"`
+	Ephemeral bool   `json:"ephemeral,omitempty"`
 }
 
 type removeResult struct {

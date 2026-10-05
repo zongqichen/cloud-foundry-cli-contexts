@@ -12,6 +12,7 @@ const (
 	ActiveContext = "CFS_ACTIVE_CONTEXT"
 	ConfigFile    = "CFS_CONFIG_FILE"
 	Disable       = "CFS_DISABLE"
+	EphemeralTTL  = "CFS_EPHEMERAL_TTL"
 	LockTimeout   = "CFS_LOCK_TIMEOUT"
 	NoUpdateCheck = "CFS_NO_UPDATE_CHECK"
 	ShimDir       = "CFS_SHIM_DIR"

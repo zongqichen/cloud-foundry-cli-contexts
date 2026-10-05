@@ -1,12 +1,15 @@
 package app
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"errors"
 	"flag"
 	"fmt"
 	"io"
 	"os"
 	"sort"
+	"strings"
 	"text/tabwriter"
 
 	"github.com/zongqichen/cloud-foundry-cli-contexts/internal/cfhome"
@@ -56,25 +59,39 @@ func commandContext(options Options, args []string) int {
 
 func commandContextCreate(options Options, args []string) (exitCode int) {
 	if isHelpRequest(args) {
-		printContextSubcommandHelp(options.Stdout, "Create an empty named context.", "cfs context create <name> [--json]")
+		printContextSubcommandHelp(options.Stdout, "Create a named or ephemeral context.", "cfs context create [<name>] [--ephemeral] [--json]")
 		return exitOK
 	}
-	if len(args) == 0 {
-		fprintf(options.Stderr, "cfs: context create requires exactly one name\n")
-		return exitUsage
-	}
-	name := args[0]
-	if err := contextname.Validate(name); err != nil {
-		fprintf(options.Stderr, "cfs: %v\n", err)
-		return exitUsage
+	var name string
+	rest := args
+	if len(args) > 0 && !strings.HasPrefix(args[0], "-") {
+		name = args[0]
+		rest = args[1:]
 	}
 	flags := newContextFlagSet("create", options.Stderr)
 	jsonOutput := flags.Bool("json", false, "print JSON output")
-	if code, ok := parseFlagSet(flags, args[1:]); !ok {
+	ephemeral := flags.Bool("ephemeral", false, "create a uniquely named context that gc reaps once idle")
+	if code, ok := parseFlagSet(flags, rest); !ok {
 		return code
 	}
 	if flags.NArg() != 0 {
 		fprintf(options.Stderr, "cfs: context create does not accept extra arguments\n")
+		return exitUsage
+	}
+	if name == "" {
+		if !*ephemeral {
+			fprintf(options.Stderr, "cfs: context create requires a name (or --ephemeral)\n")
+			return exitUsage
+		}
+		generated, err := generateEphemeralName()
+		if err != nil {
+			fprintf(options.Stderr, "cfs: %v\n", err)
+			return exitError
+		}
+		name = generated
+	}
+	if err := contextname.Validate(name); err != nil {
+		fprintf(options.Stderr, "cfs: %v\n", err)
 		return exitUsage
 	}
 	managed, code, ok := managedContextForCommand(options, name)
@@ -114,7 +131,11 @@ func commandContextCreate(options Options, args []string) (exitCode int) {
 		fprintf(options.Stderr, "cfs: inspect context %q: %v\n", name, err)
 		return exitError
 	}
-	if err := managed.Store.Ensure(managed.Context, managed.Workspace); err != nil {
+	ensure := managed.Store.Ensure
+	if *ephemeral {
+		ensure = managed.Store.EnsureEphemeral
+	}
+	if err := ensure(managed.Context, managed.Workspace); err != nil {
 		fprintf(options.Stderr, "cfs: create context %q: %v\n", name, err)
 		return exitError
 	}
@@ -124,10 +145,25 @@ func commandContextCreate(options Options, args []string) (exitCode int) {
 			Context:   name,
 			Workspace: managed.Workspace.Root,
 			CFHome:    managed.Context.CFHome,
+			Ephemeral: *ephemeral,
 		})
 	}
-	fprintf(options.Stdout, "Created context %q.\n", name)
+	if *ephemeral {
+		fprintf(options.Stdout, "Created ephemeral context %q.\n", name)
+	} else {
+		fprintf(options.Stdout, "Created context %q.\n", name)
+	}
 	return exitOK
+}
+
+// generateEphemeralName returns a unique, validation-safe context name for an
+// ephemeral context, e.g. "eph-1a2b3c4d".
+func generateEphemeralName() (string, error) {
+	raw := make([]byte, 4)
+	if _, err := rand.Read(raw); err != nil {
+		return "", fmt.Errorf("generate ephemeral context name: %w", err)
+	}
+	return "eph-" + hex.EncodeToString(raw), nil
 }
 
 func commandContextList(options Options, args []string) int {
@@ -398,7 +434,7 @@ func newContextFlagSet(name string, output io.Writer) *flag.FlagSet {
 func printContextHelp(output io.Writer) {
 	fprintf(output, "Manage named Cloud Foundry contexts in the current workspace.\n\n")
 	fprintf(output, "Usage:\n  cfs context <command> [options]\n\nCommands:\n")
-	fprintf(output, "  create <name>          Create an empty context\n")
+	fprintf(output, "  create [<name>]        Create a context (--ephemeral self-names and gc-reaps)\n")
 	fprintf(output, "  list                   List contexts (--targets adds api/org/space)\n")
 	fprintf(output, "  status <name>          Show a context and its CF target\n")
 	fprintf(output, "  remove <name>          Move a context to recoverable trash\n")
