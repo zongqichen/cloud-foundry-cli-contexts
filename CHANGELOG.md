@@ -9,6 +9,9 @@ contract may still change while cfs is pre-1.0.
 
 ### Added
 
+- Added `--targets` to `cfs context list` to show each context's api/org/space
+  in one call. It reads stored CF configuration directly without invoking `cf`
+  and never exposes tokens.
 - Added `--json` to the state-changing commands `cfs context create`,
   `cfs context remove`, `cfs import`, and `cfs reset`, so agents can parse a
   structured result (action, context, workspace, trash path) instead of prose.

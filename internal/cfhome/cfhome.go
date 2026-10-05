@@ -64,6 +64,40 @@ func HasTarget(home string) (bool, error) {
 	return strings.TrimSpace(config.Target) != "", nil
 }
 
+// Summary is the non-sensitive part of a CF target: the API endpoint and the
+// targeted org and space. It deliberately omits tokens and other credentials.
+type Summary struct {
+	API   string `json:"api,omitempty"`
+	Org   string `json:"org,omitempty"`
+	Space string `json:"space,omitempty"`
+}
+
+// Summarize reads a CF home's configuration and returns its target summary.
+// The second result is false when the home has no configuration or no target.
+func Summarize(home string) (Summary, bool, error) {
+	raw, err := readConfig(ConfigPath(home))
+	if errors.Is(err, os.ErrNotExist) {
+		return Summary{}, false, nil
+	}
+	if err != nil {
+		return Summary{}, false, err
+	}
+	var config struct {
+		Target             string
+		OrganizationFields struct{ Name string }
+		SpaceFields        struct{ Name string }
+	}
+	if err := json.Unmarshal(raw, &config); err != nil {
+		return Summary{}, false, fmt.Errorf("parse CF configuration: %w", err)
+	}
+	summary := Summary{
+		API:   strings.TrimSpace(config.Target),
+		Org:   strings.TrimSpace(config.OrganizationFields.Name),
+		Space: strings.TrimSpace(config.SpaceFields.Name),
+	}
+	return summary, summary.API != "", nil
+}
+
 func Import(sourceHome, destinationHome string) error {
 	sourcePath := ConfigPath(sourceHome)
 	destinationPath := ConfigPath(destinationHome)
