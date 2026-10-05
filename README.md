@@ -114,7 +114,9 @@ silently.
 No agent integration is required. Start Codex, Claude Code, or an IDE agent in
 its project or worktree and let it run ordinary `cf` commands. Give an agent an
 exact named command such as `cfs -c prod apps` when it needs a non-default
-target. For diagnostics safe to attach to agent logs, use:
+target. To pin the workspace regardless of the agent's working directory, set
+`CFS_WORKSPACE_ROOT`; to run one command against the global target, use `cfs
+global <cf ...>`. For diagnostics safe to attach to agent logs, use:
 
 ```sh
 cfs status --json --redact
@@ -165,6 +167,7 @@ CFS_WORKSPACE_ROOT=/workspace cf apps
 cfs setup           Install the transparent cf shim
 cfs status          Show the current workspace and target
 cfs context         Create, list, inspect, or remove named contexts
+cfs global          Run one cf command against the global target
 cfs import          Import the global context into default or a named context
 cfs doctor          Diagnose the installation and workspace
 cfs reset           Move this workspace's state to trash
@@ -177,7 +180,15 @@ cfs help [command]  Show help
 
 Run `cfs help context` for the named-context commands.
 
-Use `CFS_DISABLE=1 cf ...` to bypass isolation for one command. `cfs` collects no
+Entered the wrong workspace, or need to log in somewhere else for a moment?
+Run one command against the global target without leaving the directory:
+
+```sh
+cfs global login --sso
+cfs global target
+```
+
+This is the discoverable form of `CFS_DISABLE=1 cf ...`. `cfs` collects no
 telemetry. Workspace state and recoverable trash can contain active tokens; see
 [Security](SECURITY.md).
 
