@@ -51,6 +51,13 @@ func allCommands() []commandSpec {
 			run:      commandContext,
 		},
 		{
+			name:     "global",
+			summary:  "Run a CF command against the global target, bypassing isolation",
+			usage:    "cfs global <cf arguments...>",
+			examples: "  cfs global login --sso\n  cfs global target",
+			run:      commandGlobal,
+		},
+		{
 			name:     "import",
 			summary:  "Import global CF state into a workspace context",
 			usage:    "cfs import [--context <name>] [--yes] [--force]",
@@ -232,11 +239,11 @@ func writeJSON(options Options, value any) int {
 
 func printHelp(output io.Writer) {
 	fprintf(output, "cfs keeps Cloud Foundry CLI state isolated per workspace.\n\n")
-	fprintf(output, "Usage:\n  cfs <command> [options]\n  cfs -c <name> <cf arguments...>\n  cfs help <command>\n\nCommands:\n")
+	fprintf(output, "Usage:\n  cfs <command> [options]\n  cfs -c <name> <cf arguments...>\n  cfs global <cf arguments...>\n  cfs help <command>\n\nCommands:\n")
 	for _, command := range allCommands() {
 		fprintf(output, "  %-11s %s\n", command.name, command.summary)
 	}
-	fprintf(output, "\nEnvironment:\n  %s  Override automatic workspace discovery\n  %s      Override the state directory\n  %s    Maximum wait for a context lock (default: %s)\n  %s=1       Bypass workspace isolation for one invocation\n  %s=1 Disable interactive update notices\n\nNormal Cloud Foundry commands remain unchanged:\n  cf login --sso\n  cf target -o my-org -s my-space\n  cf apps\n", envvar.WorkspaceRoot, envvar.StateHome, envvar.LockTimeout, defaultLockTimeout, envvar.Disable, envvar.NoUpdateCheck)
+	fprintf(output, "\nEnvironment:\n  %s  Pin the workspace instead of discovering it from the directory\n  %s      Override the state directory\n  %s    Maximum wait for a context lock (default: %s)\n  %s=1       Bypass workspace isolation for one invocation\n  %s=1 Disable interactive update notices\n\nNormal Cloud Foundry commands remain unchanged:\n  cf login --sso\n  cf target -o my-org -s my-space\n  cf apps\n", envvar.WorkspaceRoot, envvar.StateHome, envvar.LockTimeout, defaultLockTimeout, envvar.Disable, envvar.NoUpdateCheck)
 }
 
 func shortID(id string) string {

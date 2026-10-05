@@ -71,7 +71,7 @@ func shouldNotifyUpdate(options Options, command commandSpec, args []string) boo
 		return false
 	}
 	switch command.name {
-	case "help", "uninstall", "update":
+	case "help", "uninstall", "update", "global":
 		return false
 	}
 	if envTrue(envvar.NoUpdateCheck) || envTrue(envvar.CI) {

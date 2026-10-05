@@ -7,6 +7,12 @@ contract may still change while cfs is pre-1.0.
 
 ## [Unreleased]
 
+### Added
+
+- Added `cfs global <cf ...>` to run a single command against the global CF
+  target, bypassing workspace isolation. It is the discoverable, one-shot
+  equivalent of `CFS_DISABLE=1 cf ...` and announces the target on stderr.
+
 ### Changed
 
 - Clarified multi-session and Agent Skill discovery, including how `cfs`
