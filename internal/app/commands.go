@@ -44,6 +44,13 @@ func allCommands() []commandSpec {
 			run:      commandStatus,
 		},
 		{
+			name:     "describe",
+			summary:  "Print the cfs contract: version, exit codes, env, and contexts",
+			usage:    "cfs describe [--json]",
+			examples: "  cfs describe\n  cfs describe --json",
+			run:      commandDescribe,
+		},
+		{
 			name:     "context",
 			summary:  "Manage named Cloud Foundry contexts in the current workspace",
 			usage:    "cfs context <create|list|status|remove> [options]",
