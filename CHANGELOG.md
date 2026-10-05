@@ -9,6 +9,9 @@ contract may still change while cfs is pre-1.0.
 
 ### Added
 
+- Added `cfs describe` (with `--json`) as a read-only, one-call contract for
+  agents: version, exit codes, environment variables, workspace resolution, and
+  the contexts in the current workspace. It never invokes `cf`.
 - Added `cfs global <cf ...>` to run a single command against the global CF
   target, bypassing workspace isolation. It is the discoverable, one-shot
   equivalent of `CFS_DISABLE=1 cf ...` and announces the target on stderr.

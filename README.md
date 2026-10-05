@@ -119,9 +119,14 @@ target. To pin the workspace regardless of the agent's working directory, set
 global <cf ...>`. For diagnostics safe to attach to agent logs, use:
 
 ```sh
+cfs describe --json
 cfs status --json --redact
 cfs context status prod --json --redact
 ```
+
+`cfs describe --json` is the one-call self-discovery surface: version, exit-code
+contract, environment variables, workspace resolution, and the contexts in the
+current workspace. It never invokes `cf`.
 
 The optional [cfs Agent Skill](.agents/skills/cfs/SKILL.md) teaches agents to
 discover existing contexts, fail closed on ambiguity, and preserve user
@@ -166,6 +171,7 @@ CFS_WORKSPACE_ROOT=/workspace cf apps
 ```text
 cfs setup           Install the transparent cf shim
 cfs status          Show the current workspace and target
+cfs describe        Print the cfs contract (version, exit codes, env, contexts)
 cfs context         Create, list, inspect, or remove named contexts
 cfs global          Run one cf command against the global target
 cfs import          Import the global context into default or a named context
