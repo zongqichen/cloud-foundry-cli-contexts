@@ -7,6 +7,13 @@ contract may still change while cfs is pre-1.0.
 
 ## [Unreleased]
 
+### Fixed
+
+- `cfs doctor` no longer describes a configured workspace target as `ready`;
+  it now states that authentication was not checked.
+- CI and release builds now use Go 1.27.2, which includes the current standard
+  library security fixes.
+
 ## [0.4.0] - 2026-10-06
 
 ### Added

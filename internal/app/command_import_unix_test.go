@@ -312,6 +312,30 @@ func TestDoctorSuggestsImportForFreshWorkspace(t *testing.T) {
 	}
 }
 
+func TestDoctorDoesNotClaimConfiguredTargetIsAuthenticated(t *testing.T) {
+	fakeCF := writeTargetAwareFakeCF(t)
+	configureTestEnvironment(t, fakeCF, t.TempDir())
+	root := markerWorkspace(t)
+	ws, err := workspace.Resolve(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cfg, err := config.Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	managed, err := resolveManagedContextFromWorkspace(cfg, ws)
+	if err != nil {
+		t.Fatal(err)
+	}
+	writeCFConfig(t, managed.Context.CFHome, []byte(`{"Target":"https://api.example.com"}`))
+
+	check := inspectWorkspaceTarget(cfg, ws)
+	if check.Status != checkPass || check.Message != "configured; authentication not checked" {
+		t.Fatalf("check = %#v", check)
+	}
+}
+
 func writeTargetAwareFakeCF(t *testing.T) string {
 	t.Helper()
 	path := filepath.Join(t.TempDir(), "cf-real")
