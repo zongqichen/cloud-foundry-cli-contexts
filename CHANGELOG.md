@@ -7,6 +7,11 @@ contract may still change while cfs is pre-1.0.
 
 ## [Unreleased]
 
+### Fixed
+
+- `cfs doctor` no longer describes a configured workspace target as `ready`;
+  it now states that authentication was not checked.
+
 ## [0.4.0] - 2026-10-06
 
 ### Added

@@ -120,7 +120,7 @@ func inspectWorkspaceTarget(cfg config.Config, ws workspace.Workspace) doctorChe
 		return doctorCheck{Name: "workspace-target", Status: checkFail, Message: err.Error()}
 	}
 	if available {
-		return doctorCheck{Name: "workspace-target", Status: checkPass, Message: "ready"}
+		return doctorCheck{Name: "workspace-target", Status: checkPass, Message: "configured; authentication not checked"}
 	}
 	_, globalAvailable, err := globalTargetAvailable()
 	if err != nil {
