@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/zongqichen/cloud-foundry-cli-contexts/internal/cfhome"
 	"github.com/zongqichen/cloud-foundry-cli-contexts/internal/config"
 	"github.com/zongqichen/cloud-foundry-cli-contexts/internal/executable"
 	"github.com/zongqichen/cloud-foundry-cli-contexts/internal/install"
@@ -120,6 +121,12 @@ func inspectWorkspaceTarget(cfg config.Config, ws workspace.Workspace) doctorChe
 		return doctorCheck{Name: "workspace-target", Status: checkFail, Message: err.Error()}
 	}
 	if available {
+		// A workspace seeded with the shared login has credentials and an API
+		// endpoint but no org/space yet; report that it still needs a target
+		// rather than claiming it is ready.
+		if summary, ok, serr := cfhome.Summarize(managed.Context.CFHome); serr == nil && ok && (summary.Org == "" || summary.Space == "") {
+			return doctorCheck{Name: "workspace-target", Status: checkWarn, Message: "authenticated; choose org/space with 'cf target -o <org> -s <space>'"}
+		}
 		return doctorCheck{Name: "workspace-target", Status: checkPass, Message: "ready"}
 	}
 	_, globalAvailable, err := globalTargetAvailable()

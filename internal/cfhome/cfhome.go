@@ -115,6 +115,39 @@ func Import(sourceHome, destinationHome string) error {
 	return nil
 }
 
+// ImportSharedAuth copies the source CF configuration into the destination but
+// clears the targeted org and space, so a workspace inherits the login
+// (authentication, API endpoint, tokens) without inheriting another
+// workspace's target. The caller then picks org/space with `cf target`, which
+// keeps targets per-workspace while sharing one login.
+func ImportSharedAuth(sourceHome, destinationHome string) error {
+	sourcePath := ConfigPath(sourceHome)
+	destinationPath := ConfigPath(destinationHome)
+	if pathutil.Equal(sourcePath, destinationPath) {
+		return errors.New("source and destination CF homes are the same")
+	}
+
+	raw, err := readConfig(sourcePath)
+	if err != nil {
+		return err
+	}
+	var config map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &config); err != nil {
+		return fmt.Errorf("parse CF configuration: %w", err)
+	}
+	empty := json.RawMessage(`{}`)
+	config["OrganizationFields"] = empty
+	config["SpaceFields"] = empty
+	merged, err := json.Marshal(config)
+	if err != nil {
+		return fmt.Errorf("encode CF configuration: %w", err)
+	}
+	if err := securefs.WriteFileAtomic(destinationPath, merged); err != nil {
+		return fmt.Errorf("write workspace CF configuration: %w", err)
+	}
+	return nil
+}
+
 func readConfig(path string) ([]byte, error) {
 	file, err := securefs.OpenRegularFile(path)
 	if err != nil {

@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/zongqichen/cloud-foundry-cli-contexts/internal/cfhome"
 	"github.com/zongqichen/cloud-foundry-cli-contexts/internal/config"
 	"github.com/zongqichen/cloud-foundry-cli-contexts/internal/envvar"
 	"github.com/zongqichen/cloud-foundry-cli-contexts/internal/executable"
@@ -121,6 +122,24 @@ func runShim(options Options, args []string) int {
 	}
 
 	env := managed.environment(os.Environ())
+
+	// Share one login across workspaces: a brand-new workspace inherits the
+	// global CF login automatically instead of forcing a fresh `cf login` (or a
+	// manual `cfs import`) in every worktree. Only an empty workspace is seeded,
+	// so a target the caller already set here is never overwritten. Auth is
+	// shared; org/space stay per-workspace.
+	seeded := false
+	if workspaceWasEmpty {
+		if home, available, gerr := globalTargetAvailable(); gerr == nil && available {
+			if ierr := cfhome.ImportSharedAuth(home, managed.Context.CFHome); ierr != nil {
+				fprintf(options.Stderr, "cfs: could not seed this workspace from the global CF login: %v\n", ierr)
+			} else {
+				seeded = true
+				fprintf(options.Stderr, "cfs: seeded this workspace's login from the global CF context; choose org/space with 'cf target -o <org> -s <space>'\n")
+			}
+		}
+	}
+
 	exitCode := invokeOfficial(options, cfg.RealCFPath, args, env)
 	commandFailed := exitCode != exitOK
 	if err := workspaceLock.Release(); err != nil {
@@ -129,7 +148,7 @@ func runShim(options Options, args []string) int {
 			return exitError
 		}
 	}
-	if commandFailed && workspaceWasEmpty {
+	if commandFailed && workspaceWasEmpty && !seeded {
 		if _, available, _ := globalTargetAvailable(); available {
 			fprintf(options.Stderr, "cfs: a global CF context is available; run 'cfs import' to use it here.\n")
 		}
