@@ -249,7 +249,7 @@ func TestImportRejectsConcurrentWorkspaceCommand(t *testing.T) {
 	}
 }
 
-func TestShimSuggestsImportForFreshWorkspace(t *testing.T) {
+func TestShimSeedsFreshWorkspaceFromGlobal(t *testing.T) {
 	fakeCF := writeTargetAwareFakeCF(t)
 	configureTestEnvironment(t, fakeCF, t.TempDir())
 	globalHome := t.TempDir()
@@ -257,14 +257,17 @@ func TestShimSuggestsImportForFreshWorkspace(t *testing.T) {
 	writeCFConfig(t, globalHome, []byte(`{"Target":"global"}`))
 	root := markerWorkspace(t)
 
+	// A fresh workspace inherits the global login automatically (no manual
+	// 'cfs import', no re-login), so the command runs against a targeted home.
 	result := runFromDirectory(t, root, []string{"cf", "apps"})
-	if result.code == exitOK || !strings.Contains(result.stderr, "run 'cfs import'") {
+	if result.code != exitOK || !strings.Contains(result.stderr, "seeded this workspace from the global CF login") {
 		t.Fatalf("result = %#v", result)
 	}
 
-	imported := runFromDirectory(t, root, []string{"cfs", "import", "--yes"})
-	if imported.code != exitOK {
-		t.Fatalf("import after hint = %#v", imported)
+	// The workspace is no longer empty, so a later command is not re-seeded.
+	again := runFromDirectory(t, root, []string{"cf", "apps"})
+	if again.code != exitOK || strings.Contains(again.stderr, "seeded this workspace") {
+		t.Fatalf("second run = %#v", again)
 	}
 }
 
