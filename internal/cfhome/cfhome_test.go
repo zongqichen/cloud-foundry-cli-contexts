@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 )
 
@@ -24,6 +25,36 @@ func TestImportCopiesPrivateConfiguration(t *testing.T) {
 		t.Fatalf("imported configuration = %q, want %q", got, want)
 	}
 	assertMode(t, filepath.Dir(ConfigPath(destination)), 0o700)
+	assertMode(t, ConfigPath(destination), 0o600)
+}
+
+func TestImportSharedAuthClearsTarget(t *testing.T) {
+	source := t.TempDir()
+	destination := t.TempDir()
+	writeConfig(t, source, []byte(`{"Target":"https://api.example.com","RefreshToken":"secret","OrganizationFields":{"Name":"global-org"},"SpaceFields":{"Name":"global-space"}}`), 0o600)
+
+	if err := ImportSharedAuth(source, destination); err != nil {
+		t.Fatal(err)
+	}
+	// Auth and API endpoint are carried over.
+	summary, hasTarget, err := Summarize(destination)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !hasTarget || summary.API != "https://api.example.com" {
+		t.Fatalf("summary = %#v, hasTarget = %v", summary, hasTarget)
+	}
+	// Org/space are cleared so the workspace must choose its own target.
+	if summary.Org != "" || summary.Space != "" {
+		t.Fatalf("org/space not cleared: %#v", summary)
+	}
+	got, err := os.ReadFile(ConfigPath(destination))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(got), "secret") {
+		t.Fatalf("auth not preserved: %s", got)
+	}
 	assertMode(t, ConfigPath(destination), 0o600)
 }
 

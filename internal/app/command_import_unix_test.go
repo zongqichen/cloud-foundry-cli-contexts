@@ -260,7 +260,7 @@ func TestShimSeedsFreshWorkspaceFromGlobal(t *testing.T) {
 	// A fresh workspace inherits the global login automatically (no manual
 	// 'cfs import', no re-login), so the command runs against a targeted home.
 	result := runFromDirectory(t, root, []string{"cf", "apps"})
-	if result.code != exitOK || !strings.Contains(result.stderr, "seeded this workspace from the global CF login") {
+	if result.code != exitOK || !strings.Contains(result.stderr, "seeded this workspace's login from the global CF context") {
 		t.Fatalf("result = %#v", result)
 	}
 

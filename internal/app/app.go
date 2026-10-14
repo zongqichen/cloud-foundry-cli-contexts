@@ -131,11 +131,11 @@ func runShim(options Options, args []string) int {
 	seeded := false
 	if workspaceWasEmpty {
 		if home, available, gerr := globalTargetAvailable(); gerr == nil && available {
-			if ierr := cfhome.Import(home, managed.Context.CFHome); ierr != nil {
+			if ierr := cfhome.ImportSharedAuth(home, managed.Context.CFHome); ierr != nil {
 				fprintf(options.Stderr, "cfs: could not seed this workspace from the global CF login: %v\n", ierr)
 			} else {
 				seeded = true
-				fprintf(options.Stderr, "cfs: seeded this workspace from the global CF login; set org/space with 'cf target'\n")
+				fprintf(options.Stderr, "cfs: seeded this workspace's login from the global CF context; choose org/space with 'cf target -o <org> -s <space>'\n")
 			}
 		}
 	}
