@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/zongqichen/cloud-foundry-cli-contexts/internal/config"
+	"github.com/zongqichen/cloud-foundry-cli-contexts/internal/envvar"
 	"github.com/zongqichen/cloud-foundry-cli-contexts/internal/lock"
 	"github.com/zongqichen/cloud-foundry-cli-contexts/internal/store"
 	"github.com/zongqichen/cloud-foundry-cli-contexts/internal/workspace"
@@ -378,14 +379,17 @@ func markerWorkspace(t *testing.T) string {
 
 func configureTestEnvironment(t *testing.T, fakeCF, stateRoot string) {
 	t.Helper()
-	t.Setenv("CFS_CONFIG_FILE", filepath.Join(t.TempDir(), "config.json"))
-	t.Setenv("CFS_STATE_HOME", stateRoot)
-	t.Setenv("CFS_WORKSPACE_ROOT", "")
-	t.Setenv("CFS_DISABLE", "")
-	t.Setenv("CFS_ACTIVE_CONTEXT", "")
-	t.Setenv("CFS_LOCK_TIMEOUT", "50ms")
-	t.Setenv("CF_HOME", "")
-	t.Setenv("CF_PLUGIN_HOME", "")
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
+	t.Setenv(envvar.ConfigFile, filepath.Join(t.TempDir(), "config.json"))
+	t.Setenv(envvar.StateHome, stateRoot)
+	t.Setenv(envvar.WorkspaceRoot, "")
+	t.Setenv(envvar.Disable, "")
+	t.Setenv(envvar.ActiveContext, "")
+	t.Setenv(envvar.LockTimeout, "50ms")
+	t.Setenv(envvar.CFHome, "")
+	t.Setenv(envvar.CFPluginHome, "")
 	if err := config.Save(config.Config{Version: config.CurrentVersion, RealCFPath: fakeCF, ShimDir: t.TempDir()}); err != nil {
 		t.Fatal(err)
 	}
