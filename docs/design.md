@@ -105,9 +105,20 @@ $ cf apps
 There is no setup step for the default context and no mutable `cfs use`
 selection.
 
-On the first `cf` invocation in a workspace, `cfs` creates an empty private CF
-home. The official CLI then behaves as it would with any new `CF_HOME`. Future
-shells and coding tools operating in that worktree resolve the same home.
+On the first managed `cf` invocation in a workspace, `cfs` creates a private CF
+home. If its `.cf/config.json` is absent at command start and the global
+configuration has a nonblank API `Target`, `cfs` attempts to copy the saved API
+and authentication configuration without confirmation. It clears
+`OrganizationFields` and `SpaceFields`, so the user chooses the workspace's
+organization and space.
+The shim skips copying if it finds an existing configuration at command start,
+even without an API target. If no usable source exists, the official CLI starts
+with the workspace's fresh home. Future shells and coding tools in that worktree
+resolve the same home.
+
+The absence check currently runs before acquiring the context lock. A command
+waiting for that lock can overwrite configuration created while it waits.
+Initialize a fresh default context before starting concurrent commands there.
 
 An existing global context can be copied explicitly:
 
@@ -115,9 +126,19 @@ An existing global context can be copied explicitly:
 $ cfs import
 ```
 
-Import is a one-time snapshot, not a shared or synchronized context. It requires
-confirmation because the opaque CF configuration contains credentials. `cfs`
-never imports credentials as a side effect of a normal `cf` command.
+Explicit import preserves the global organization and space. It requires
+confirmation or `--yes`, and `--force` permits replacement of an existing target.
+The global configuration must have a nonblank API `Target`, and `CF_HOME` must
+be unset. Import into a named context requires that context to exist.
+The destination counts as targeted only when it has a saved API `Target` and
+the official `cf target` command succeeds. An existing configuration alone does
+not require `--force`.
+
+Both modes leave the source unchanged and create independent snapshots. Token
+refreshes and later target changes do not synchronize. The source must pass
+configuration and filesystem validation. Neither mode verifies live
+authentication. The explicit import's `cf target` probe checks local target
+availability, not whether credentials still work against the API.
 
 ### 4.3 Multiple projects
 
@@ -151,10 +172,12 @@ $ cfs -c prod apps
 ```
 
 The identity is the exact pair `(workspace, context name)`. Every pair has its
-own `CF_HOME` and lock. `cf ...` is equivalent to selecting `default`; named
-selection applies to one `cfs -c <name> ...` invocation and never changes a
-shared current value. Names must already exist, are case-sensitive, and are not
+own `CF_HOME` and lock. `cf ...` selects `default`; named selection applies to
+one `cfs -c <name> ...` invocation and never changes a shared current value.
+Names must already exist, are case-sensitive, and are not
 created as a side effect of running a CF command.
+Named invocations, including `cfs -c default ...`, do not automatically copy
+global configuration. Use explicit import or login to populate them.
 
 ### 4.6 Inspection
 
@@ -221,7 +244,7 @@ original command's output or exit status.
 
 Context names contain 1–63 lowercase ASCII letters or digits, with dots,
 hyphens, and underscores permitted internally. Unknown or invalid names fail
-closed. Credentials are never copied implicitly.
+closed.
 
 ## 6. Runtime architecture
 
@@ -267,10 +290,11 @@ For each invocation of `cf <arguments>`:
 6. Validate and create the private state directory.
 7. Acquire the selected context's process lock.
 8. Construct the child environment.
-9. Start the official CLI with the original argument vector.
-10. Forward standard input, output, error, terminal behavior, and signals.
-11. Return the official CLI exit status unchanged.
-12. Release the lock.
+9. For the ordinary shim path, attempt automatic copying if the workspace
+   configuration was absent and a saved global API target is available.
+10. Start the official CLI with the original argument vector.
+11. Forward standard input, output, error, terminal behavior, and signals.
+12. Release the lock and return the official CLI exit status.
 
 Conceptual pseudocode:
 
@@ -279,6 +303,7 @@ func runCF(args []string) int {
     realCF := config.RealCFPath
     scope := resolveScope(os.Getwd(), os.Environ())
     context := store.Open(scope)
+    configMissing := !context.HasCFConfig()
 
     lock := context.Lock()
     defer lock.Release()
@@ -288,6 +313,9 @@ func runCF(args []string) int {
     env.SetIfUnset("CF_PLUGIN_HOME", store.SharedPluginHome())
     env.Set("CFS_ACTIVE_CONTEXT", context.ID())
 
+    if configMissing {
+        tryCopyGlobalAuth(context.CFHome())
+    }
     return runAndForward(realCF, args, env)
 }
 ```
@@ -341,10 +369,9 @@ identity information. Credentials embedded in remote URLs must be stripped
 before hashing. Raw remote URLs are never written to metadata or logs.
 
 The canonical path keeps separate clones and worktrees isolated. Moving a
-workspace creates a new context by default. This is a safe failure mode: it may
-require another login, but it cannot silently attach credentials from an
-unrelated directory. A future explicit `cfs rebind` operation may support safe
-migration.
+workspace creates a new context by default. Its first managed `cf` command may
+copy the global configuration, but it does not reuse the previous workspace's
+state. A future explicit `cfs rebind` operation may support safe migration.
 
 The default context ID is the workspace ID. A named context uses a
 domain-separated SHA-256 digest of the workspace ID and exact context name.
@@ -382,10 +409,11 @@ Security requirements:
 - Context IDs are validated fixed-length hexadecimal strings.
 - Symbolic-link traversal outside the state root is rejected.
 
-The official CF CLI owns the contents of `home/.cf`. Except for an explicit
-`cfs import`, `cfs` treats that directory as opaque and does not modify or merge
-`config.json`. Import validates and atomically copies the global file without
-parsing or printing its credentials.
+The official CF CLI owns the contents of `home/.cf`. Automatic copying and
+explicit `cfs import` validate the global configuration and write a private copy
+atomically. Automatic copying replaces only `OrganizationFields` and
+`SpaceFields` with empty objects. Explicit import preserves the file contents.
+Neither mode interprets or prints credentials, or modifies the source file.
 
 ### 10.1 Retention and deletion
 
@@ -448,8 +476,9 @@ child process from recursively acquiring the same lock.
 - `CFS_DISABLE=1` provides an explicit one-command bypass.
 
 Support targets should include currently maintained CF CLI major versions. A
-compatibility matrix and automated smoke tests determine the supported range;
-the shim does not rely on undocumented `config.json` fields.
+compatibility matrix and automated smoke tests determine the supported range.
+Configuration copying and inspection depend on the saved `Target`,
+`OrganizationFields`, and `SpaceFields` fields.
 
 ## 14. Installation safety
 
@@ -496,7 +525,7 @@ cmd/
   cfs/                 executable entry point and mode dispatch
 internal/
   app/                 control commands and shim dispatch
-  cfhome/              opaque CF configuration import
+  cfhome/              CF configuration copying and inspection
   config/              global configuration
   contextname/         portable context-name validation
   workspace/           root discovery and identity
@@ -555,12 +584,16 @@ The MVP is complete only when all of the following are demonstrated:
 9. No token or password appears in `cfs` metadata, logs, or diagnostic output.
 10. Uninstalling restores direct access to the official CF CLI without deleting
     user state.
-11. Import requires explicit confirmation, never prints credentials, and cannot
-    replace an active workspace target without `--force`.
+11. Explicit import requires confirmation or `--yes`, never prints credentials,
+    and cannot replace an active workspace target without `--force`.
 12. Two named contexts in one workspace can use different targets concurrently,
     while two commands in the same named context remain serialized.
 13. Unknown or malformed context names cannot create state or fall back to the
     default or global CF home.
+14. A fresh default workspace can copy saved global API and authentication
+    configuration without inheriting the organization or space. Configuration
+    present at command start and the global source remain unchanged.
+15. Named invocations do not copy global configuration automatically.
 
 The automated coverage for these criteria is documented in
 [testing.md](testing.md).

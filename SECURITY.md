@@ -18,7 +18,7 @@ tokens, refresh tokens, client secrets, or production endpoint details.
 
 `cfs` delegates authentication and API communication to the official Cloud
 Foundry CLI. It stores each workspace context's CF CLI home in a private local
-state directory and treats that content as opaque.
+state directory. It copies saved configuration only through the two modes below.
 
 The project does not collect telemetry and must never log CF credentials or full
 command lines. CF plugins are executable code and should be installed only from
@@ -35,13 +35,26 @@ ordinary official CF CLI home. Owner-only filesystem permissions protect them
 from other local users, but the files are not encrypted by `cfs`; backups and
 host administrators may still access them.
 
-`cfs import` makes an explicit, one-time copy of `$HOME/.cf/config.json` into
-the default context or an existing named context. The source file
-can contain access tokens, refresh tokens, and client secrets. It requires an
-interactive confirmation or `--yes`, rejects symbolic links and source files
-readable by other users, writes the destination atomically with mode `0600`, and
-never prints the file contents. `--force` can replace an active workspace target
-but does not revoke the credentials it replaces. Import never runs implicitly.
+An ordinary managed `cf` command automatically copies `$HOME/.cf/config.json`
+when the default workspace configuration is absent at command start and the
+source has a nonblank API `Target`. This copy requires no confirmation,
+preserves the saved API and authentication configuration, and clears the
+organization and space. The shim skips this copy if it finds an existing
+workspace configuration at command start. Named invocations require explicit
+import or login.
+
+`cfs import` copies the global configuration into the default context or an
+existing named context, including the saved organization and space. It requires
+an interactive confirmation or `--yes`, and rejects a set `CF_HOME`. `--force`
+permits replacement of an existing target but does not revoke its credentials.
+
+Both modes reject symbolic links, invalid JSON, files larger than 4 MiB, and
+source files accessible by other users. They write the destination atomically
+with mode `0600` and never print the file contents. The source remains unchanged.
+Each copy can contain access tokens, refresh tokens, and client secrets. These
+independent snapshots do not synchronize token refreshes or later target
+changes. Neither mode verifies live authentication. A saved API target can
+contain expired credentials.
 
 `cfs reset`, `cfs context remove`, and `cfs gc --apply` retain removed contexts
 in recoverable trash indefinitely. Moving a context does not revoke its tokens.

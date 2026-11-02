@@ -35,7 +35,7 @@ Prebuilt binaries support Linux and macOS on x86-64 and arm64. Put the shim
 directory printed by `cfs setup` first on `PATH`, open a new shell, and run
 `cfs doctor`.
 
-Now log in normally from each project:
+From a project, log in normally if you do not have a saved global login:
 
 ```sh
 cd ~/work/orders
@@ -45,7 +45,7 @@ cf apps
 
 Another project or Git worktree receives a separate context automatically.
 Terminals and agents in the same worktree intentionally share its default
-context.
+context. A fresh default context can reuse your [existing login](#existing-login).
 
 ## Updating
 
@@ -89,25 +89,35 @@ names fail without creating state.
 
 ## Existing login
 
-To copy your current global CF target into a workspace once:
+An ordinary managed `cf` command can copy your saved global API and authentication
+configuration into the workspace's fresh default context without prompting.
+This happens only when its managed `.cf/config.json` is absent at command start
+and the global configuration has a nonblank API `Target`. The copy clears the
+organization and space, so choose them in the workspace:
 
 ```sh
 cd ~/work/orders
-CFS_DISABLE=1 cf target
-cfs import
+cf target -o commerce -s development
 ```
 
-To import into a named context instead:
+The shim skips automatic copying if it finds an existing workspace configuration
+at command start, even if the configuration has no API target. Named invocations
+such as `cfs -c prod ...` require explicit import or login.
+
+To copy the global organization and space as well, run `cfs import` in the
+workspace. To import into a named context, create the context first:
 
 ```sh
 cfs context create prod
 cfs import --context prod
 ```
 
-The import is a private snapshot, not a link. It may contain active credentials.
-Use `cfs import --yes` in non-interactive automation and `--force` only when you
-intend to replace an existing workspace target. `cfs` never imports credentials
-silently.
+Explicit import requires confirmation or `--yes` for non-interactive automation.
+Use `--force` to replace an existing target. Unset `CF_HOME` before importing.
+Both modes require a valid, private global configuration file and leave it
+unchanged. Each copy is an independent snapshot that may contain credentials.
+Token refreshes and later target changes do not synchronize between contexts.
+A saved API target does not establish that the copied login is still valid.
 
 ## Coding agents
 
@@ -171,6 +181,10 @@ Alternatively, select a workspace for one command:
 ```sh
 CFS_WORKSPACE_ROOT=/workspace cf apps
 ```
+
+An explicit `CF_HOME` bypasses workspace management unless
+`CFS_WORKSPACE_ROOT` is set. Without a workspace or an explicit bypass, `cfs`
+refuses to fall back to the global CF home.
 
 ## Commands
 
