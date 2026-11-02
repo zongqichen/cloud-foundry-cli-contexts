@@ -3,6 +3,7 @@ package app
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"io"
 	"os"
 	"os/exec"
@@ -15,6 +16,61 @@ import (
 )
 
 const applicationTestChild = "CFS_APPLICATION_TEST_CHILD"
+
+func TestMain(m *testing.M) {
+	os.Exit(runAppTests(m))
+}
+
+func runAppTests(m *testing.M) (code int) {
+	root, err := os.MkdirTemp("", "cfs-app-tests-")
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "cfs app tests: create temporary root: %v\n", err)
+		return 1
+	}
+	defer func() {
+		if err := os.RemoveAll(root); err != nil {
+			fmt.Fprintf(os.Stderr, "cfs app tests: remove temporary root: %v\n", err)
+			if code == 0 {
+				code = 1
+			}
+		}
+	}()
+
+	canonicalRoot, err := filepath.EvalSymlinks(root)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "cfs app tests: resolve temporary root: %v\n", err)
+		return 1
+	}
+	home := filepath.Join(canonicalRoot, "home")
+	if err := os.Mkdir(home, 0o700); err != nil {
+		fmt.Fprintf(os.Stderr, "cfs app tests: create temporary home: %v\n", err)
+		return 1
+	}
+
+	environment := []struct {
+		name  string
+		value string
+	}{
+		{name: "HOME", value: home},
+		{name: "USERPROFILE", value: home},
+		{name: envvar.ConfigFile, value: filepath.Join(canonicalRoot, "config", "config.json")},
+		{name: envvar.StateHome, value: filepath.Join(canonicalRoot, "state")},
+		{name: envvar.CFHome},
+		{name: envvar.CFPluginHome},
+		{name: envvar.CFTrace},
+		{name: envvar.Disable},
+		{name: envvar.ActiveContext},
+		{name: envvar.WorkspaceRoot},
+	}
+	for _, variable := range environment {
+		if err := os.Setenv(variable.name, variable.value); err != nil {
+			fmt.Fprintf(os.Stderr, "cfs app tests: set %s: %v\n", variable.name, err)
+			return 1
+		}
+	}
+
+	return m.Run()
+}
 
 func TestApplicationTestsIgnoreCallerHome(t *testing.T) {
 	if os.Getenv(applicationTestChild) == "1" {
