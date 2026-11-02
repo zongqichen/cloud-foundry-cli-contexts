@@ -9,6 +9,8 @@ contract may still change while cfs is pre-1.0.
 
 ### Fixed
 
+- `cfs doctor` no longer reports that a saved local target proves current
+  authentication.
 - Application tests no longer inherit or read the caller's global Cloud Foundry
   configuration.
 

@@ -121,13 +121,10 @@ func inspectWorkspaceTarget(cfg config.Config, ws workspace.Workspace) doctorChe
 		return doctorCheck{Name: "workspace-target", Status: checkFail, Message: err.Error()}
 	}
 	if available {
-		// A workspace seeded with the shared login has credentials and an API
-		// endpoint but no org/space yet; report that it still needs a target
-		// rather than claiming it is ready.
 		if summary, ok, serr := cfhome.Summarize(managed.Context.CFHome); serr == nil && ok && (summary.Org == "" || summary.Space == "") {
-			return doctorCheck{Name: "workspace-target", Status: checkWarn, Message: "authenticated; choose org/space with 'cf target -o <org> -s <space>'"}
+			return doctorCheck{Name: "workspace-target", Status: checkWarn, Message: "local login configured; authentication not verified; choose org/space with 'cf target -o <org> -s <space>'"}
 		}
-		return doctorCheck{Name: "workspace-target", Status: checkPass, Message: "ready"}
+		return doctorCheck{Name: "workspace-target", Status: checkPass, Message: "local target configured; authentication not verified"}
 	}
 	_, globalAvailable, err := globalTargetAvailable()
 	if err != nil {

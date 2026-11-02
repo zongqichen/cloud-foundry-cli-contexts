@@ -191,6 +191,8 @@ cfs help [command]  Show help
 ```
 
 Run `cfs help context` for the named-context commands.
+`cfs doctor` checks local configuration and workspace state. It does not verify
+a live CF login.
 
 Entered the wrong workspace, or need to log in somewhere else for a moment?
 Run one command against the global target without leaving the directory:
