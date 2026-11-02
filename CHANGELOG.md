@@ -7,6 +7,8 @@ contract may still change while cfs is pre-1.0.
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-11-02
+
 ### Fixed
 
 - The `cf` shim now checks for an existing default workspace configuration while
@@ -146,7 +148,8 @@ contract may still change while cfs is pre-1.0.
 - Linux and macOS release builds, checksums, provenance, CI, smoke tests, and an
   Apache-2.0 license.
 
-[Unreleased]: https://github.com/zongqichen/cloud-foundry-cli-contexts/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/zongqichen/cloud-foundry-cli-contexts/compare/v0.4.1...HEAD
+[0.4.1]: https://github.com/zongqichen/cloud-foundry-cli-contexts/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/zongqichen/cloud-foundry-cli-contexts/compare/v0.3.1...v0.4.0
 [0.3.1]: https://github.com/zongqichen/cloud-foundry-cli-contexts/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/zongqichen/cloud-foundry-cli-contexts/compare/v0.2.0...v0.3.0
