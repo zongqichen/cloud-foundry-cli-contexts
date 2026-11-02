@@ -47,32 +47,21 @@ same pull request as the release preparation.
 active `cf` command is already the cfs shim, pass the official executable
 explicitly: `CFS_REAL_CF=/absolute/path/to/cf make smoke`.
 
-Before a release, verify login inheritance with synthetic, isolated fixtures.
-Use a temporary user home, `CFS_STATE_HOME`, CF homes, and workspaces. Keep the
-caller's real CF configuration untouched. Unset `CF_HOME` for managed commands
-and explicit import. Use a local CF fixture or the
-[TLS mock used by the E2E suite](testing.md), with no live credentials.
+Before a release, run the automated configuration-copy and CLI acceptance checks:
 
-1. Give the temporary global configuration a saved API `Target`, an organization,
-   and a space. Run an ordinary `cf` command in a fresh default workspace.
-   Confirm that it copies the API and saved authentication configuration,
-   clears the organization and space, and reports the copy on standard error.
-2. Compare the source file before and after the command. Confirm it is unchanged.
-3. Give the workspace its own organization and space. Change the synthetic
-   global configuration, then run another command from a fresh process. Confirm
-   that the existing workspace configuration remains unchanged. Repeat with an
-   existing workspace configuration that has no API target.
-4. Create a named context and run `cfs -c <name> target`. Confirm that it receives
-   no automatic copy. Run `cfs import --context <name> --yes` and confirm that
-   the copy preserves the global organization and space. Confirm that a second
-   import refuses to replace this target without `--force`.
-5. Confirm that two workspaces and two named contexts retain independent targets.
-   Verify explicit `CF_HOME` bypass and failure outside a workspace without a
-   bypass.
+```sh
+go test ./internal/app ./internal/cfhome
+CFS_REAL_CF=/absolute/path/to/cf make e2e
+```
 
-These local checks do not verify live authentication or token refresh. Run any
-separately authorized live acceptance test against a non-production foundation
-with isolated homes. Never put credentials, tokens, target configuration, or
+The package tests exercise configuration copying with synthetic files. The E2E
+suite runs the official CLI against its in-process TLS mock with temporary
+homes, credentials, state, and workspaces. See [Testing](testing.md) for its
+journey coverage. These commands do not need the caller's real CF configuration.
+
+These local checks do not prove authentication or token refresh against a live
+foundation. Run any separately authorized live acceptance test against a
+non-production foundation with isolated homes. Never put credentials, tokens, target configuration, or
 live acceptance output in release artifacts or CI logs.
 
 ## Release automation
