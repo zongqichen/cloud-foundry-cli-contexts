@@ -24,7 +24,7 @@ Already using environment variables or another context manager?
 ## Quick start
 
 Install the [official CF CLI](https://github.com/cloudfoundry/cli), then install
-`cfs` with Go 1.26.8+:
+`cfs` with Go 1.26.10+:
 
 ```sh
 go install github.com/zongqichen/cloud-foundry-cli-contexts/cmd/cfs@latest

@@ -56,6 +56,8 @@ organization, and space. They remove `CF_TRACE` from the probe environment and
 never intentionally request tokens. Prefer their `--json --redact` form in
 agent logs, issue reports, and other shared output.
 
-Official release binaries are built with Go 1.27.1. Source installations require
-Go 1.26.8 or newer so the minimum supported toolchain includes the standard
-library fixes current when this policy was written.
+The CI and release workflows select the latest Go 1.27 patch with
+`check-latest: true`, so each run picks up available standard library security
+fixes. Source installations require Go 1.26.10 or newer. Use the latest patch
+of a supported Go release when building from source. The minimum-version CI job
+reads its Go version from `go.mod`.

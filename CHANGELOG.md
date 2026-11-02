@@ -7,6 +7,12 @@ contract may still change while cfs is pre-1.0.
 
 ## [Unreleased]
 
+### Security
+
+- CI and release builds now select the latest Go 1.27 patch to pick up
+  standard library security fixes, including GO-2026-6809 in Go 1.27.3.
+- Source builds now require Go 1.26.10 or newer, which also fixes GO-2026-6809.
+
 ## [0.4.0] - 2026-10-06
 
 ### Added
