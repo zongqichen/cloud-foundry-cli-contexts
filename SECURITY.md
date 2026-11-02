@@ -36,12 +36,12 @@ from other local users, but the files are not encrypted by `cfs`; backups and
 host administrators may still access them.
 
 An ordinary managed `cf` command automatically copies `$HOME/.cf/config.json`
-when the default workspace configuration is absent at command start and the
-source has a nonblank API `Target`. This copy requires no confirmation,
-preserves the saved API and authentication configuration, and clears the
-organization and space. The shim skips this copy if it finds an existing
-workspace configuration at command start. Named invocations require explicit
-import or login.
+when the default workspace configuration is absent while the shim holds the
+context lock and the source has a nonblank API `Target`. This copy requires no
+confirmation, preserves the saved API and authentication configuration, and
+clears the organization and space. The shim skips this copy if it finds an
+existing workspace configuration while holding the context lock. Named
+invocations require explicit import or login.
 
 `cfs import` copies the global configuration into the default context or an
 existing named context, including the saved organization and space. It requires
