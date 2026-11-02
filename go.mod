@@ -1,6 +1,6 @@
 module github.com/zongqichen/cloud-foundry-cli-contexts
 
-go 1.26.8
+go 1.26.10
 
 require (
 	golang.org/x/mod v0.41.0
