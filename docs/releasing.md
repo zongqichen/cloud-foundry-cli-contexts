@@ -47,22 +47,22 @@ same pull request as the release preparation.
 active `cf` command is already the cfs shim, pass the official executable
 explicitly: `CFS_REAL_CF=/absolute/path/to/cf make smoke`.
 
-Before a release, also perform the opt-in manual acceptance test against a
-non-production Cloud Foundry foundation:
+Before a release, run the automated configuration-copy and CLI acceptance checks:
 
-1. Log in globally, run `cfs import` from a new workspace, and confirm the
-   imported target without printing credentials.
-2. Confirm the global configuration is unchanged by the import.
-3. Confirm a fresh shell in that workspace retains the target.
-4. Run two coding agents in different workspaces and confirm that they retain
-   different org and space targets.
-5. Create two named contexts in one workspace, target them independently, and
-   confirm that commands do not cross targets.
-6. Confirm a failed command in a fresh workspace suggests `cfs import` without
-   modifying the global target.
+```sh
+go test ./internal/app ./internal/cfhome
+CFS_REAL_CF=/absolute/path/to/cf make e2e
+```
 
-Never put credentials, tokens, target configuration, or live acceptance output
-in release artifacts or CI logs.
+The package tests exercise configuration copying with synthetic files. The E2E
+suite runs the official CLI against its in-process TLS mock with temporary
+homes, credentials, state, and workspaces. See [Testing](testing.md) for its
+journey coverage. These commands do not need the caller's real CF configuration.
+
+These local checks do not prove authentication or token refresh against a live
+foundation. Run any separately authorized live acceptance test against a
+non-production foundation with isolated homes. Never put credentials, tokens, target configuration, or
+live acceptance output in release artifacts or CI logs.
 
 ## Release automation
 
