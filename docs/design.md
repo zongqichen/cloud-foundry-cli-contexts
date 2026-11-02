@@ -106,19 +106,15 @@ There is no setup step for the default context and no mutable `cfs use`
 selection.
 
 On the first managed `cf` invocation in a workspace, `cfs` creates a private CF
-home. If its `.cf/config.json` is absent at command start and the global
-configuration has a nonblank API `Target`, `cfs` attempts to copy the saved API
-and authentication configuration without confirmation. It clears
+home. If its `.cf/config.json` is absent while the shim holds the context lock
+and the global configuration has a nonblank API `Target`, `cfs` attempts to copy
+the saved API and authentication configuration without confirmation. It clears
 `OrganizationFields` and `SpaceFields`, so the user chooses the workspace's
 organization and space.
-The shim skips copying if it finds an existing configuration at command start,
-even without an API target. If no usable source exists, the official CLI starts
-with the workspace's fresh home. Future shells and coding tools in that worktree
-resolve the same home.
-
-The absence check currently runs before acquiring the context lock. A command
-waiting for that lock can overwrite configuration created while it waits.
-Initialize a fresh default context before starting concurrent commands there.
+The shim skips copying if it finds an existing configuration while holding the
+context lock, even without an API target. If no usable source exists, the
+official CLI starts with the workspace's fresh home. Future shells and coding
+tools in that worktree resolve the same home.
 
 An existing global context can be copied explicitly:
 
@@ -289,9 +285,10 @@ For each invocation of `cf <arguments>`:
    context ID from both workspace identity and name.
 6. Validate and create the private state directory.
 7. Acquire the selected context's process lock.
-8. Construct the child environment.
-9. For the ordinary shim path, attempt automatic copying if the workspace
-   configuration was absent and a saved global API target is available.
+8. For the ordinary shim path, inspect the workspace configuration while holding
+   the lock.
+9. Construct the child environment. Attempt automatic copying if the
+   configuration is absent and a saved global API target is available.
 10. Start the official CLI with the original argument vector.
 11. Forward standard input, output, error, terminal behavior, and signals.
 12. Release the lock and return the official CLI exit status.
@@ -303,10 +300,10 @@ func runCF(args []string) int {
     realCF := config.RealCFPath
     scope := resolveScope(os.Getwd(), os.Environ())
     context := store.Open(scope)
-    configMissing := !context.HasCFConfig()
 
     lock := context.Lock()
     defer lock.Release()
+    configMissing := !context.HasCFConfig()
 
     env := cloneEnvironment()
     env.Set("CF_HOME", context.CFHome())
@@ -591,8 +588,8 @@ The MVP is complete only when all of the following are demonstrated:
 13. Unknown or malformed context names cannot create state or fall back to the
     default or global CF home.
 14. A fresh default workspace can copy saved global API and authentication
-    configuration without inheriting the organization or space. Configuration
-    present at command start and the global source remain unchanged.
+    configuration without inheriting the organization or space. Configuration that
+    exists while the context lock is held and the global source remain unchanged.
 15. Named invocations do not copy global configuration automatically.
 
 The automated coverage for these criteria is documented in

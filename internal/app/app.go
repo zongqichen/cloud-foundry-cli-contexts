@@ -99,12 +99,6 @@ func runShim(options Options, args []string) int {
 		reportWorkspaceError(options, err)
 		return exitUnavailable
 	}
-	workspaceWasEmpty, err := workspaceConfigMissing(managed.Context.CFHome)
-	if err != nil {
-		fprintf(options.Stderr, "cfs: inspect workspace CF state: %v\n", err)
-		return exitError
-	}
-
 	timeout, err := lockTimeout()
 	if err != nil {
 		fprintf(options.Stderr, "cfs: %v\n", err)
@@ -121,13 +115,14 @@ func runShim(options Options, args []string) int {
 		return exitError
 	}
 
+	workspaceWasEmpty, err := workspaceConfigMissing(managed.Context.CFHome)
+	if err != nil {
+		fprintf(options.Stderr, "cfs: inspect workspace CF state: %v\n", errors.Join(err, workspaceLock.Release()))
+		return exitError
+	}
+
 	env := managed.environment(os.Environ())
 
-	// Share one login across workspaces: a brand-new workspace inherits the
-	// global CF login automatically instead of forcing a fresh `cf login` (or a
-	// manual `cfs import`) in every worktree. Only an empty workspace is seeded,
-	// so a target the caller already set here is never overwritten. Auth is
-	// shared; org/space stay per-workspace.
 	seeded := false
 	if workspaceWasEmpty {
 		if home, available, gerr := globalTargetAvailable(); gerr == nil && available {

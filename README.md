@@ -91,9 +91,9 @@ names fail without creating state.
 
 An ordinary managed `cf` command can copy your saved global API and authentication
 configuration into the workspace's fresh default context without prompting.
-This happens only when its managed `.cf/config.json` is absent at command start
-and the global configuration has a nonblank API `Target`. The copy clears the
-organization and space, so choose them in the workspace:
+This happens only when its managed `.cf/config.json` is absent while the shim
+holds the context lock and the global configuration has a nonblank API `Target`.
+The copy clears the organization and space, so choose them in the workspace:
 
 ```sh
 cd ~/work/orders
@@ -101,8 +101,8 @@ cf target -o commerce -s development
 ```
 
 The shim skips automatic copying if it finds an existing workspace configuration
-at command start, even if the configuration has no API target. Named invocations
-such as `cfs -c prod ...` require explicit import or login.
+while holding the context lock, even if the configuration has no API target.
+Named invocations such as `cfs -c prod ...` require explicit import or login.
 
 To copy the global organization and space as well, run `cfs import` in the
 workspace. To import into a named context, create the context first:

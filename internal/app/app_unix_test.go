@@ -179,6 +179,42 @@ func TestShimRejectsConcurrentCommandInSameWorkspace(t *testing.T) {
 	}
 }
 
+func TestShimReleasesLockWhenWorkspaceStateInspectionFails(t *testing.T) {
+	fakeCF := writeFakeCF(t)
+	stateRoot := canonicalTestPath(t, t.TempDir())
+	configureTestEnvironment(t, fakeCF, stateRoot)
+	root := markerWorkspace(t)
+
+	ws, err := workspace.Resolve(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	stateStore := store.New(stateRoot)
+	ctx, err := stateStore.ContextFor(ws)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := stateStore.Prepare(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(ctx.CFHome, ".cf", "config.json"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+
+	result := runFromDirectory(t, root, []string{"cf", "apps"})
+	if result.code != exitError || !strings.Contains(result.stderr, "inspect workspace CF state") {
+		t.Fatalf("result = %#v", result)
+	}
+
+	acquired, err := lock.Acquire(ctx.LockPath, 0)
+	if err != nil {
+		t.Fatalf("context lock remained held: %v", err)
+	}
+	if err := acquired.Release(); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestShimForwardsInteractiveInputAndArguments(t *testing.T) {
 	fakeCF := writeFakeCF(t)
 	configureTestEnvironment(t, fakeCF, t.TempDir())

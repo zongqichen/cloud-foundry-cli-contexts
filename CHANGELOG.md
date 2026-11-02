@@ -9,6 +9,9 @@ contract may still change while cfs is pre-1.0.
 
 ### Fixed
 
+- The `cf` shim now checks for an existing default workspace configuration while
+  it holds the context lock. Automatic login copying no longer overwrites
+  configuration created by a concurrent command.
 - `cfs doctor` no longer reports that a saved local target proves current
   authentication.
 - Application tests no longer inherit or read the caller's global Cloud Foundry
